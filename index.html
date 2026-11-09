@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="clipscribe-mode" content="auto" />
+    <title>ClipScribe — Video Dictation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body class="min-h-screen bg-[#10130f] text-stone-100">
+    <main class="mx-auto max-w-7xl px-5 py-7 lg:px-10">
+      <header class="mb-8 flex flex-wrap items-center justify-between gap-5">
+        <div>
+          <p class="eyebrow">LISTEN · TYPE · LEARN</p>
+          <div class="brand-line"><h1 class="brand">Clip<span>Scribe</span></h1><span id="app-mode-badge" class="app-mode-badge hidden">Biblioteca pública</span></div>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <label class="library-select" for="clipLibrarySelect"><span>Biblioteca de Clipes</span><select id="clipLibrarySelect"><option value="">Selecione um clipe…</option></select></label>
+          <button id="new-clip-button" class="button button-accent" type="button" data-admin-only>+ Novo Clipe</button>
+          <label class="button button-quiet cursor-pointer" data-admin-only>Vídeo local<input id="video-input" class="hidden" type="file" accept="video/mp4,video/webm,video/x-matroska,.mkv" /></label>
+          <label class="button button-quiet cursor-pointer" data-admin-only>Legenda<input id="subtitle-input" class="hidden" type="file" accept=".srt,.vtt,text/plain" /></label>
+          <button id="paste-subtitle" class="button button-quiet" type="button" data-admin-only>Colar legenda</button>
+          <button id="demo-button" class="button button-accent" type="button" data-admin-only>Iniciar demo</button>
+        </div>
+      </header>
+
+      <section class="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(310px,.8fr)]">
+        <div class="panel overflow-hidden">
+          <div class="video-shell">
+            <video id="video" class="h-full w-full object-cover" controls playsinline preload="auto"></video>
+            <div id="empty-video" class="empty-video">
+              <div class="orb">▶</div>
+              <p>Seu vídeo, seu ritmo.</p>
+              <small id="empty-video-help">Escolha um clipe da biblioteca para começar.</small>
+            </div>
+            <div id="video-start-overlay" class="video-start-overlay" hidden>
+              <span id="video-load-pulse" class="video-load-pulse" aria-hidden="true"></span>
+              <p id="video-start-message">Preparando a primeira frase…</p>
+              <button id="start-first-segment" class="button button-accent hidden" type="button">▶ Ouvir primeira frase</button>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 p-5">
+            <div><p id="video-name" class="font-medium text-stone-200">Nenhum vídeo carregado</p><p id="segment-time" class="mono text-xs text-stone-500">00:00.000 — 00:00.000</p></div>
+            <div class="flex flex-wrap items-center gap-2">
+              <label class="speed-control" for="speed-select">Velocidade <select id="speed-select" aria-label="Velocidade de reprodução"><option value="0.75">0.75x</option><option value="0.85">0.85x</option><option value="1" selected>1.0x</option></select></label>
+              <button id="previous-button" class="icon-button" aria-label="Segmento anterior">←</button>
+              <button id="play-button" class="button button-accent min-w-32" type="button">▶ Ouvir trecho</button>
+              <button id="next-button" class="icon-button" aria-label="Próximo segmento">→</button>
+              <button id="record-button" class="button button-quiet" type="button">🎙️ Gravar minha voz</button>
+              <button id="compare-button" class="button button-quiet" type="button" disabled>🔁 Comparar</button>
+              <button id="next-chapter-button" class="button button-accent hidden" type="button">▶️ Ir para próxima parte</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="panel p-5">
+          <div class="mb-5 flex items-center justify-between"><div><p class="eyebrow">CADERNO</p><h2 class="mt-1 font-medium">Aprendizado</h2></div><div class="text-right"><span id="segment-count" class="mono text-xs text-lime-300">0 frases</span><span id="progress-badge" class="progress-badge">Progresso —</span></div></div>
+          <div class="side-tabs" role="tablist"><button id="segments-tab" class="side-tab is-active" type="button" role="tab" aria-selected="true">Frases</button><button id="vocabulary-tab" class="side-tab" type="button" role="tab" aria-selected="false">Vocabulário <span id="vocabulary-count">0</span></button></div>
+          <div id="segments-panel" role="tabpanel"><ol id="segment-list" class="segment-list" aria-label="Lista de segmentos"></ol></div>
+          <div id="vocabulary-panel" class="hidden" role="tabpanel"><div class="vocab-actions"><button id="anki-export" class="button button-quiet" type="button">Exportar Anki</button><button id="json-export" class="button button-quiet" type="button">Exportar JSON</button><button id="vocab-practice" class="button button-accent" type="button">▶ Revisão rápida</button></div><p id="vocab-empty" class="vocab-empty">Use ★ para uma palavra ou “Selecionar expressão” para salvar várias.</p><ul id="vocabulary-list" class="vocabulary-list" aria-label="Meu Vocabulário C1"></ul></div>
+        </aside>
+      </section>
+
+      <section class="panel mt-6 p-6 lg:p-8">
+        <div class="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p class="eyebrow">DITADO</p><h2 id="segment-label" class="mt-1 text-2xl font-semibold">Escolha um clipe para começar</h2></div><div class="flex flex-wrap items-center gap-3"><label class="hint-select" for="hintDifficultySelect">Pistas<select id="hintDifficultySelect"><option value="easy">Fácil · Guiado</option><option value="medium" selected>Médio · Equilibrado</option><option value="hard">Difícil · C1</option><option value="none">Sem pistas</option></select></label><button id="expression-mode-button" class="button button-quiet" type="button">＋ Selecionar expressão</button><button id="edit-segment-button" class="button button-quiet" type="button" data-admin-only>✏️ Editar frase</button><p id="typing-feedback" class="mono text-sm text-stone-500" aria-live="polite">—</p></div></div>
+        <div id="word-bank" class="word-bank" aria-label="Palavras do trecho"></div>
+        <div id="expression-toolbar" class="expression-toolbar hidden" role="status"><div><strong id="expression-preview">Selecione uma ou mais palavras</strong><span>Clique na primeira e na última palavra da expressão.</span></div><div class="flex gap-2"><button id="cancel-expression" class="button button-quiet" type="button">Cancelar</button><button id="save-expression" class="button button-accent" type="button" disabled>★ Salvar expressão</button></div></div>
+        <input id="typing-input" class="keyboard-capture" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" disabled aria-label="Captura de digitação para as caixas de palavras" />
+        <div class="mt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-stone-500"><span>Digite somente letras e números · pontuação é exibida fora das caixas</span><div class="flex items-center gap-3"><button id="replay-button" class="underlined" type="button">Repetir trecho</button><button id="next-sentence-button" class="button button-accent next-sentence-button hidden" type="button">Próxima frase →</button></div></div>
+      </section>
+    </main>
+
+    <dialog id="subtitle-dialog" class="dialog-panel" data-admin-only>
+      <form method="dialog" class="p-6"><div class="flex items-start justify-between gap-4"><div><p class="eyebrow">IMPORTAR TEXTO</p><h2 class="mt-1 text-2xl font-semibold">Cole sua legenda</h2></div><button class="icon-button" value="cancel" aria-label="Fechar">×</button></div><textarea id="subtitle-text" class="subtitle-text mt-5" placeholder="1&#10;00:00:01,000 --> 00:00:03,500&#10;Hello, welcome to ClipScribe!"></textarea><div class="mt-5 flex justify-end gap-3"><button class="button button-quiet" value="cancel">Cancelar</button><button id="import-pasted" class="button button-accent" value="default">Usar legenda</button></div></form>
+    </dialog>
+    <dialog id="vocabulary-dialog" class="dialog-panel">
+      <form method="dialog" class="p-6"><div class="flex items-start justify-between gap-4"><div><p class="eyebrow">MEU VOCABULÁRIO C1</p><h2 id="vocabulary-dialog-word" class="mt-1 text-2xl font-semibold">Palavra</h2></div><button class="icon-button" value="cancel" aria-label="Fechar">×</button></div><p id="vocabulary-dialog-sentence" class="mt-4 text-sm leading-6 text-stone-300"></p><label class="mt-5 block text-xs text-stone-400" for="vocabulary-note">Nota opcional · tradução, sinônimo ou lembrança</label><textarea id="vocabulary-note" class="subtitle-text mt-2 min-h-24" placeholder="Ex.: quase desaparecendo"></textarea><div class="mt-5 flex justify-end gap-3"><button class="button button-quiet" value="cancel">Fechar</button><button id="save-vocabulary-note" class="button button-accent" value="default">Salvar nota</button></div></form>
+    </dialog>
+    <dialog id="new-clip-dialog" class="dialog-panel" data-admin-only>
+      <form id="new-clip-form" class="p-6"><div class="flex items-start justify-between gap-4"><div><p class="eyebrow">PIPELINE LOCAL</p><h2 class="mt-1 text-2xl font-semibold">Criar novo clipe</h2></div><button class="icon-button" type="button" data-close-new-clip aria-label="Fechar">×</button></div><label class="mt-4 block text-xs text-stone-400">Modo<select id="clip-mode" class="subtitle-text mt-2"><option value="clip">Trecho único</option><option value="episode">📺 Fatiar episódio completo</option></select></label><div class="clip-form-grid mt-5"><label>Caminho local<input id="clip-input-path" class="subtitle-text mt-2" name="inputPath" placeholder="/home/luiz/Videos/episode.mkv" /></label><label>ou envie um vídeo<input id="clip-file" class="file-control mt-2" name="file" type="file" accept="video/mp4,video/webm,video/x-matroska,video/quicktime,.mkv,.mov" /></label><label>Título<input id="clip-title" class="subtitle-text mt-2" name="title" required placeholder="B99 S04E19 - Your Honor" /></label><label>Modelo<select id="clip-model" class="subtitle-text mt-2" name="model"><option value="base.en">base.en</option><option value="small.en">small.en</option></select></label><label class="single-clip-field">Início<input id="clip-start" class="subtitle-text mt-2" name="start" placeholder="00:04:10" /></label><label class="single-clip-field">Fim<input id="clip-end" class="subtitle-text mt-2" name="end" placeholder="00:06:10" /></label><label id="episode-target" class="hidden">Capítulo<select id="episode-target-select" class="subtitle-text mt-2"><option value="90">90s</option><option value="120" selected>120s / 2 min</option><option value="180">180s</option></select></label></div><label id="episode-transcript" class="hidden mt-4 block text-xs text-stone-400">Colar transcrição oficial (opcional)<textarea id="reference-transcript" class="subtitle-text mt-2 min-h-40" placeholder="Texto do SubsLikeScript ou Fandom…"></textarea></label><p id="clip-create-status" class="mt-4 text-xs text-stone-400" aria-live="polite"></p><div id="server-fallback" class="server-fallback hidden"><p>Para criar clipes pela interface, inicie o servidor unificado:</p><code>python3 server.py</code></div><div class="mt-5 flex justify-end gap-3"><button class="button button-quiet" type="button" data-close-new-clip>Cancelar</button><button id="prepare-clip-button" class="button button-accent" type="submit">Recortar &amp; transcrever</button></div></form>
+    </dialog>
+    <dialog id="segment-editor-dialog" class="dialog-panel" data-admin-only>
+      <form id="segment-editor-form" class="p-6"><div class="flex items-start justify-between gap-4"><div><p class="eyebrow">CORRIGIR TRANSCRIÇÃO</p><h2 class="mt-1 text-2xl font-semibold">Editar frase</h2></div><button class="icon-button" type="button" data-close-segment-editor aria-label="Fechar">×</button></div><label class="mt-5 block text-xs text-stone-400" for="segment-editor-text">Texto</label><input id="segment-editor-text" class="subtitle-text mt-2" required /><div class="clip-form-grid mt-4"><label>Início (segundos)<input id="segment-editor-start" class="subtitle-text mt-2" type="number" min="0" step="0.001" /></label><label>Fim (segundos)<input id="segment-editor-end" class="subtitle-text mt-2" type="number" min="0" step="0.001" /></label></div><p id="segment-editor-status" class="mt-4 text-xs text-stone-400" aria-live="polite"></p><div class="mt-5 flex justify-end gap-3"><button class="button button-quiet" type="button" data-close-segment-editor>Cancelar</button><button id="save-segment-button" class="button button-accent" type="submit">Salvar correção</button></div></form>
+    </dialog>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
