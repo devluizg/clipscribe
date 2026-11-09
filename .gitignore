@@ -4,4 +4,4 @@ __pycache__/
 dist/
 
 # A biblioteca de trabalho local é grande e privada. Somente public/clips vai ao Pages.
-clips/
+/clips/
