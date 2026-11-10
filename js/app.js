@@ -34,10 +34,10 @@ function toggleExpressionMode() { typing.setExpressionMode(!typing.selectionMode
 function saveSelectedExpression() { const selection = typing.getSelectedExpression(); if (!selection.text) return; const context = activeContext({ word: selection.text, errorCount: 0 }); vocabulary.add(vocabularyEntry(context, "expressão")); updateVocabularyPanel(); typing.setExpressionMode(false); switchPanel("vocabulary"); $("typing-feedback").textContent = `Expressão salva: “${selection.text}”.`; }
 function registerWordIssue(payload) { const context = activeContext(payload); const tracked = vocabulary.recordIssue(context, payload.type); if (payload.type === "reveal" || tracked.critical) vocabulary.add(vocabularyEntry(context, tracked.critical ? "critical" : "hint", tracked.critical)); updateVocabularyPanel(); }
 function playSuccessSound() { const AudioContext = window.AudioContext || window.webkitAudioContext; if (!AudioContext) return; const context = new AudioContext(); const gain = context.createGain(); const oscillator = context.createOscillator(); oscillator.type = "sine"; oscillator.frequency.setValueAtTime(660, context.currentTime); oscillator.frequency.exponentialRampToValueAtTime(990, context.currentTime + .12); gain.gain.setValueAtTime(.0001, context.currentTime); gain.gain.exponentialRampToValueAtTime(.14, context.currentTime + .015); gain.gain.exponentialRampToValueAtTime(.0001, context.currentTime + .23); oscillator.connect(gain).connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + .24); oscillator.addEventListener("ended", () => context.close()); }
-function selectSegment(index, { play = false } = {}) { if (index < 0 || index >= state.segments.length) return; $("next-chapter-button").classList.add("hidden"); $("next-sentence-button").classList.add("hidden"); window.clearTimeout(state.advanceTimer); controller.currentIndex = index; const segment = state.segments[index]; $("segment-label").textContent = `${state.practiceIndices ? "Revisão · " : ""}Frase ${index + 1} de ${state.segments.length}`; $("segment-time").textContent = `${formatTime(segment.startTime)} → ${formatTime(segment.endTime)}`; typing.setSegment(segment); renderSegmentList(); if (play) controller.playCurrentSegment(); else typing.focus(); }
+function selectSegment(index, { play = false } = {}) { if (index < 0 || index >= state.segments.length) return; $("next-chapter-button").classList.add("hidden"); $("next-sentence-button").classList.add("hidden"); window.clearTimeout(state.advanceTimer); controller.currentIndex = index; const segment = state.segments[index]; $("segment-label").textContent = `${state.practiceIndices ? "Revisão · " : ""}Frase ${index + 1} de ${state.segments.length}`; $("segment-time").textContent = `${formatTime(segment.startTime)} → ${formatTime(segment.endTime)}`; typing.setSegment(segment); renderSegmentList(); if (play) controller.playCurrentSegment(); else { controller.isSegmentPlayback = false; video.currentTime = segment.startTime; typing.focus(); } }
 function nextSegment({ play = true } = {}) { const candidates = state.practiceIndices ?? state.segments.map((_, index) => index); const current = candidates.indexOf(controller.currentIndex); const next = candidates[current + 1]; if (next !== undefined) selectSegment(next, { play }); else showNextChapter(); }
 function showNextChapter() { const current = state.clips.find((clip) => clip.id === state.clipId); const next = current?.groupId && state.clips.find((clip) => clip.groupId === current.groupId && clip.partNumber === current.partNumber + 1); const button = $("next-chapter-button"); button.classList.toggle("hidden", !next); if (next) { button.textContent = `▶️ Ir para Parte ${String(next.partNumber).padStart(2, "0")}`; button.onclick = async () => { await loadLibraryClip(next.id, { userInitiated: true }); }; } }
-function completeCurrentSegment(score) { const index = controller.currentIndex; state.completed.add(index); if (state.clipId) { const saved = clipProgress(); saved.segments[String(index)] = score; saved.completed = [...state.completed]; saved.finished = state.completed.size >= state.segments.length; state.progress[state.clipId] = saved; persistProgress(); } playSuccessSound(); renderSegmentList(); updateProgressBadge(); const candidates = state.practiceIndices ?? state.segments.map((_, candidate) => candidate); const isLast = candidates.indexOf(index) >= candidates.length - 1; const nextButton = $("next-sentence-button"); nextButton.textContent = isLast ? "Concluir capítulo →" : "Próxima frase →"; nextButton.classList.remove("hidden"); }
+function completeCurrentSegment(score) { const index = controller.currentIndex; state.completed.add(index); if (state.clipId) { const saved = clipProgress(); saved.segments[String(index)] = score; saved.completed = [...state.completed]; saved.finished = state.completed.size >= state.segments.length; state.progress[state.clipId] = saved; persistProgress(); } playSuccessSound(); renderSegmentList(); updateProgressBadge(); const candidates = state.practiceIndices ?? state.segments.map((_, candidate) => candidate); const isLast = candidates.indexOf(index) >= candidates.length - 1; const nextButton = $("next-sentence-button"); nextButton.textContent = isLast ? "Concluir capítulo →" : "Próxima frase → (Enter)"; nextButton.classList.remove("hidden"); }
 function advanceCompletedSentence() { $("next-sentence-button").classList.add("hidden"); nextSegment({ play: true }); }
 function renderSegmentList() {
   const list = $("segment-list");
@@ -86,12 +86,59 @@ $("subtitle-input").addEventListener("change", async ({ target }) => { if (PUBLI
 $("paste-subtitle").addEventListener("click", () => { if (!PUBLIC_MODE) $("subtitle-dialog").showModal(); }); $("import-pasted").addEventListener("click", (event) => { event.preventDefault(); if (PUBLIC_MODE) return; loadSubtitle($("subtitle-text").value, null, state.clipTitle); $("subtitle-dialog").close(); });
 $("play-button").addEventListener("click", () => controller.togglePlayPause()); $("replay-button").addEventListener("click", () => controller.playCurrentSegment()); $("previous-button").addEventListener("click", () => selectSegment(Math.max(0, controller.currentIndex - 1), { play: true })); $("next-button").addEventListener("click", () => nextSegment({ play: true })); $("speed-select").addEventListener("change", (event) => controller.setPlaybackRate(event.target.value)); $("hintDifficultySelect").addEventListener("change", (event) => { typing.setHintDifficulty(event.target.value); localStorage.setItem(HINT_DIFFICULTY_KEY, event.target.value); }); $("edit-segment-button").addEventListener("click", () => openSegmentEditor()); $("segment-editor-form").addEventListener("submit", saveSegmentEdit); document.querySelectorAll("[data-close-segment-editor]").forEach((button) => button.addEventListener("click", () => $("segment-editor-dialog").close()));
 $("hint-button")?.addEventListener("click", () => { typing.revealCurrentWord(); controller.playCurrentSegment().finally(() => typing.focus()); }); $("backspace-button")?.addEventListener("click", () => { typing.backspace(); typing.focus(); }); $("mobile-focus-button")?.addEventListener("click", () => typing.focus());
+$("prev-sentence-mobile")?.addEventListener("click", () => selectSegment(Math.max(0, controller.currentIndex - 1), { play: true }));
+$("next-sentence-mobile")?.addEventListener("click", () => nextSegment({ play: true }));
 $("next-sentence-button").addEventListener("click", advanceCompletedSentence);
 $("expression-mode-button").addEventListener("click", toggleExpressionMode); $("cancel-expression").addEventListener("click", () => { typing.setExpressionMode(false); typing.focus(); }); $("save-expression").addEventListener("click", saveSelectedExpression);
 $("record-button")?.addEventListener("click", toggleRecording); $("compare-button")?.addEventListener("click", compareShadowing); $("new-clip-button").addEventListener("click", showNewClipDialog); $("new-clip-form").addEventListener("submit", prepareNewClip); document.querySelectorAll("[data-close-new-clip]").forEach((button) => button.addEventListener("click", () => $("new-clip-dialog").close()));
 $("clip-mode").addEventListener("change", (event) => { const episode = event.target.value === "episode"; $("episode-target").classList.toggle("hidden", !episode); $("episode-transcript").classList.toggle("hidden", !episode); document.querySelectorAll(".single-clip-field").forEach((field) => field.classList.toggle("hidden", episode)); });
 $("segments-tab").addEventListener("click", () => switchPanel("segments")); $("vocabulary-tab").addEventListener("click", () => switchPanel("vocabulary")); $("anki-export").addEventListener("click", exportAnki); $("json-export").addEventListener("click", exportVocabularyJson); $("vocab-practice").addEventListener("click", startVocabularyPractice);
 $("save-vocabulary-note").addEventListener("click", (event) => { event.preventDefault(); const entry = vocabulary.entries.find((item) => item.id === state.pendingVocabularyId); if (entry) { vocabulary.add({ ...entry, note: $("vocabulary-note").value.trim() }); updateVocabularyPanel(); } $("vocabulary-dialog").close(); });
-document.addEventListener("keydown", (event) => { const replay = event.key === "Tab" || (event.ctrlKey && event.code === "Space"); if (replay) { event.preventDefault(); controller.playCurrentSegment().finally(() => typing.focus()); return; } if (!PUBLIC_MODE && event.altKey && event.key.toLowerCase() === "e") { event.preventDefault(); openSegmentEditor(); return; } if (event.altKey && event.key.toLowerCase() === "r") { event.preventDefault(); toggleRecording(); return; } if ((event.altKey && event.key.toLowerCase() === "k") || (event.ctrlKey && event.key.toLowerCase() === "p")) { event.preventDefault(); controller.togglePlayPause(); typing.focus(); return; } if (event.altKey && event.key.toLowerCase() === "h") { event.preventDefault(); typing.revealCurrentWord(); controller.playCurrentSegment().finally(() => typing.focus()); return; } if (event.ctrlKey && !event.altKey && event.key === "ArrowLeft") { event.preventDefault(); selectSegment(Math.max(0, controller.currentIndex - 1), { play: true }); return; } if (event.ctrlKey && !event.altKey && event.key === "ArrowRight") { event.preventDefault(); nextSegment({ play: true }); } }, true);
+document.addEventListener("keydown", (event) => {
+  const modKey = event.ctrlKey || event.metaKey;
+  const replay = event.key === "Tab" || (modKey && event.code === "Space");
+  if (replay) {
+    event.preventDefault();
+    controller.playCurrentSegment().finally(() => typing.focus());
+    return;
+  }
+  if (event.key === "Enter" && !$("next-sentence-button").classList.contains("hidden")) {
+    event.preventDefault();
+    advanceCompletedSentence();
+    return;
+  }
+  if (!PUBLIC_MODE && event.altKey && event.key.toLowerCase() === "e") {
+    event.preventDefault();
+    openSegmentEditor();
+    return;
+  }
+  if (event.altKey && event.key.toLowerCase() === "r") {
+    event.preventDefault();
+    toggleRecording();
+    return;
+  }
+  if ((event.altKey && event.key.toLowerCase() === "k") || (modKey && event.key.toLowerCase() === "p")) {
+    event.preventDefault();
+    controller.togglePlayPause();
+    typing.focus();
+    return;
+  }
+  if (event.altKey && event.key.toLowerCase() === "h") {
+    event.preventDefault();
+    typing.revealCurrentWord();
+    controller.playCurrentSegment().finally(() => typing.focus());
+    return;
+  }
+  if ((modKey || event.altKey) && event.key === "ArrowLeft") {
+    event.preventDefault();
+    selectSegment(Math.max(0, controller.currentIndex - 1), { play: true });
+    return;
+  }
+  if ((modKey || event.altKey) && event.key === "ArrowRight") {
+    event.preventDefault();
+    nextSegment({ play: true });
+    return;
+  }
+}, true);
 $("demo-button").addEventListener("click", async () => { if (PUBLIC_MODE) return; const demo = state.clips.find((clip) => clip.id === "demo-sintel"); if (demo) { await loadLibraryClip(demo.id, { userInitiated: true }); return; } const loadId = useVideo("https://media.w3.org/2010/05/sintel/trailer.mp4", "Demo · Sintel trailer (CC0)"); const playbackPrimer = primeVideoPlayback(); loadSubtitle(await fetch("sample/sample.srt").then((response) => response.text()), "demo-sintel", "Demo · Sintel trailer"); await playbackPrimer; if (loadId === state.videoLoadId) await startFirstSegment(); });
 $("start-first-segment").addEventListener("click", startFirstSegment); window.addEventListener("beforeunload", () => { if (state.objectUrl) URL.revokeObjectURL(state.objectUrl); }); $("hintDifficultySelect").value = readHintDifficulty(); typing.setHintDifficulty($("hintDifficultySelect").value); updateVocabularyPanel(); loadLibrary();

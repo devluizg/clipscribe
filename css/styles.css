@@ -45,6 +45,9 @@ body { font-family: "DM Mono", monospace; background-image: radial-gradient(circ
 .mobile-typing-btn:active { background: rgba(215, 255, 100, .2); transform: scale(.96); }
 #mobile-focus-indicator.is-active { color: var(--lime); font-weight: 600; }
 
+.kbd-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 1.3rem; padding: .18rem .38rem; border-radius: .35rem; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .18); border-bottom: 2px solid rgba(255, 255, 255, .34); color: #f4f7ee; font-family: "DM Mono", monospace; font-size: .65rem; font-weight: 500; line-height: 1; box-shadow: 0 1px 2px rgba(0,0,0,.28); }
+.shortcuts-bar { font-family: "DM Mono", monospace; }
+
 @media (max-width: 768px) {
   .brand { font-size: 1.85rem; }
   .library-select { width: 100%; justify-content: space-between; }
@@ -54,6 +57,7 @@ body { font-family: "DM Mono", monospace; background-image: radial-gradient(circ
   .word-box { padding: .45rem .3rem; }
   .button, .icon-button { min-height: 42px; touch-action: manipulation; }
   .dictation-shell { padding: .85rem .6rem; }
+  .shortcuts-bar { font-size: .68rem; padding: .55rem .75rem; }
   .mobile-typing-bar { flex-direction: column; align-items: stretch; }
   .mobile-typing-bar .flex { width: 100%; justify-content: space-between; }
   .mobile-typing-bar .flex .mobile-typing-btn { flex: 1; }

@@ -50,10 +50,23 @@
               <div><p id="video-name" class="font-medium text-stone-200">Nenhum vídeo carregado</p><p id="segment-time" class="mono text-xs text-stone-500">00:00.000 — 00:00.000</p></div>
               <div class="flex flex-wrap items-center gap-2">
                 <label class="speed-control" for="speed-select">Velocidade <select id="speed-select" aria-label="Velocidade de reprodução"><option value="0.75">0.75x</option><option value="0.85">0.85x</option><option value="1" selected>1.0x</option></select></label>
-                <button id="previous-button" class="icon-button" aria-label="Segmento anterior">←</button>
-                <button id="play-button" class="button button-accent min-w-32" type="button">▶ Ouvir trecho</button>
-                <button id="next-button" class="icon-button" aria-label="Próximo segmento">→</button>
+                <button id="previous-button" class="icon-button" aria-label="Voltar frase (Ctrl + ←)" title="Voltar frase anterior (Ctrl + ←)">←</button>
+                <button id="play-button" class="button button-accent min-w-32" type="button" title="Ouvir / Repetir frase (Tab)">▶ Ouvir trecho</button>
+                <button id="next-button" class="icon-button" aria-label="Próxima frase (Ctrl + →)" title="Ir para próxima frase (Ctrl + →)">→</button>
                 <button id="next-chapter-button" class="button button-accent hidden" type="button">▶️ Ir para próxima parte</button>
+              </div>
+            </div>
+            <div class="shortcuts-bar flex flex-wrap items-center justify-between gap-2.5 border-t border-white/10 bg-black/30 px-4 py-2.5 text-xs text-stone-400">
+              <div class="flex items-center gap-2">
+                <span class="text-lime-300 font-semibold tracking-wider text-[0.67rem] uppercase">⌨️ Atalhos</span>
+                <span class="text-stone-600 hidden sm:inline">·</span>
+                <span class="text-stone-400 hidden sm:inline">Controle o vídeo e as frases pelo teclado:</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-stone-200 text-[0.72rem]">
+                <span class="inline-flex items-center gap-1.5" title="Ouvir ou repetir o trecho atual"><kbd class="kbd-badge">Tab</kbd> <span>Repetir</span></span>
+                <span class="inline-flex items-center gap-1.5" title="Voltar para a frase anterior"><kbd class="kbd-badge">Ctrl</kbd><kbd class="kbd-badge">←</kbd> <span>Voltar frase</span></span>
+                <span class="inline-flex items-center gap-1.5" title="Avançar para a próxima frase"><kbd class="kbd-badge">Ctrl</kbd><kbd class="kbd-badge">→</kbd> <span>Próxima frase</span></span>
+                <span class="inline-flex items-center gap-1.5" title="Dica da palavra atual"><kbd class="kbd-badge">Alt</kbd><kbd class="kbd-badge">H</kbd> <span>Dica</span></span>
               </div>
             </div>
           </div>
@@ -79,10 +92,12 @@
               <button id="mobile-focus-button" class="mobile-typing-btn flex-1 sm:flex-initial" type="button" aria-label="Abrir teclado para digitar">
                 <span id="mobile-focus-indicator">⌨️ Toque para abrir o teclado</span>
               </button>
-              <div class="flex items-center gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <button id="prev-sentence-mobile" class="mobile-typing-btn" type="button" title="Voltar frase anterior">⏮ Voltar</button>
+                <button id="replay-button" class="mobile-typing-btn" type="button" title="Repetir trecho">↻ Repetir</button>
+                <button id="next-sentence-mobile" class="mobile-typing-btn" type="button" title="Próxima frase">⏭ Próxima</button>
                 <button id="hint-button" class="mobile-typing-btn" type="button" title="Revelar a palavra atual (Dica)">💡 Dica</button>
                 <button id="backspace-button" class="mobile-typing-btn" type="button" title="Apagar letra anterior">⌫ Apagar</button>
-                <button id="replay-button" class="mobile-typing-btn" type="button" title="Repetir trecho">↻ Repetir</button>
               </div>
             </div>
 

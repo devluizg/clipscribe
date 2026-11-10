@@ -4,9 +4,40 @@ export class VideoController {
     this.video = video; this.segments = []; this.currentIndex = 0; this.isSegmentPlayback = false;
     this.onSegmentEnded = onSegmentEnded; this.onStateChange = onStateChange; this.frameId = null;
     this.tick = this.tick.bind(this);
-    video.addEventListener("play", () => this.watch());
+    video.addEventListener("play", () => {
+      const segment = this.currentSegment;
+      if (segment) {
+        const threshold = Math.min(0.08, (segment.endTime - segment.startTime) / 2);
+        if (this.video.currentTime < segment.startTime - 0.05 || this.video.currentTime >= segment.endTime - threshold) {
+          this.video.currentTime = segment.startTime;
+        }
+        this.isSegmentPlayback = true;
+      }
+      this.watch();
+    });
     video.addEventListener("pause", () => { this.stopWatch(); this.onStateChange?.(false); });
     video.addEventListener("ended", () => { this.isSegmentPlayback = false; this.stopWatch(); this.onStateChange?.(false); });
+    video.addEventListener("seeked", () => {
+      const segment = this.currentSegment;
+      if (segment) {
+        if (this.video.currentTime < segment.startTime - 0.05 || this.video.currentTime > segment.endTime) {
+          this.video.currentTime = segment.startTime;
+        }
+      }
+    });
+    video.addEventListener("timeupdate", () => {
+      const segment = this.currentSegment;
+      if (!this.video.paused && segment) {
+        if (this.video.currentTime >= segment.endTime - 0.008) {
+          this.video.currentTime = segment.endTime;
+          this.isSegmentPlayback = false;
+          this.video.pause();
+          this.onSegmentEnded?.(this.currentIndex);
+        } else if (this.video.currentTime < segment.startTime - 0.1) {
+          this.video.currentTime = segment.startTime;
+        }
+      }
+    });
   }
   setSegments(segments) { this.segments = segments; this.currentIndex = 0; }
   setPlaybackRate(rate) { this.video.playbackRate = Number(rate); }
@@ -20,10 +51,15 @@ export class VideoController {
     try { await this.video.play(); this.watch(); return true; } catch { this.isSegmentPlayback = false; this.onStateChange?.(false); return false; }
   }
   togglePlayPause() {
-    if (!this.currentSegment) return;
+    const segment = this.currentSegment;
+    if (!segment) return;
     if (this.video.paused) {
-      if (this.video.currentTime < this.currentSegment.startTime || this.video.currentTime >= this.currentSegment.endTime) return this.playCurrentSegment();
-      this.isSegmentPlayback = true; this.video.play().then(() => this.watch());
+      const threshold = Math.min(0.08, (segment.endTime - segment.startTime) / 2);
+      if (this.video.currentTime < segment.startTime || this.video.currentTime >= segment.endTime - threshold) {
+        return this.playCurrentSegment();
+      }
+      this.isSegmentPlayback = true;
+      this.video.play().then(() => this.watch()).catch(() => {});
     } else this.video.pause();
   }
   goToSegment(index) {
@@ -56,8 +92,13 @@ export class VideoController {
   stopWatch() { if (this.frameId) cancelAnimationFrame(this.frameId); this.frameId = null; }
   tick() {
     const segment = this.currentSegment;
-    if (!this.video.paused && this.isSegmentPlayback && segment && this.video.currentTime >= segment.endTime - 0.008) {
-      this.video.currentTime = segment.endTime; this.isSegmentPlayback = false; this.video.pause(); this.onSegmentEnded?.(this.currentIndex); return;
+    if (!this.video.paused && segment) {
+      if (this.video.currentTime >= segment.endTime - 0.008) {
+        this.video.currentTime = segment.endTime; this.isSegmentPlayback = false; this.video.pause(); this.onSegmentEnded?.(this.currentIndex); return;
+      }
+      if (this.video.currentTime < segment.startTime - 0.1) {
+        this.video.currentTime = segment.startTime;
+      }
     }
     if (!this.video.paused) this.frameId = requestAnimationFrame(this.tick);
   }
