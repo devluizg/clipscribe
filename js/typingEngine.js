@@ -22,7 +22,14 @@ function tokenize(text) {
   const tokens = []; let pendingPrefix = "";
   for (const piece of pieces) {
     if (LETTER_OR_NUMBER.test(piece)) {
-      tokens.push({ prefix: pendingPrefix, word: piece, suffix: "", expected: normalizedLetters(piece) }); pendingPrefix = "";
+      tokens.push({
+        prefix: pendingPrefix,
+        word: piece,
+        suffix: "",
+        expected: normalizedLetters(piece),
+        displayLetters: piece.match(/[\p{L}\p{N}]/gu) ?? []
+      });
+      pendingPrefix = "";
     } else if (tokens.length) tokens[tokens.length - 1].suffix += piece;
     else pendingPrefix += piece;
   }
@@ -40,9 +47,8 @@ export class TypingEngine {
     input.addEventListener("compositionend", (event) => this.onCompositionEnd(event));
     input.addEventListener("focus", () => this.updateFocusState(true));
     input.addEventListener("blur", () => this.updateFocusState(false));
-    wordBank.addEventListener("click", (event) => {
+    wordBank.addEventListener("click", () => {
       if (this.selectionMode) return;
-      if (event.target.closest(".word-save")) return;
       this.focus();
     });
   }
@@ -120,7 +126,8 @@ export class TypingEngine {
     const position = `${this.wordIndex}:${this.letterIndex}`; const isFirstAttempt = !this.firstAttempts.has(position);
     if (isFirstAttempt) this.firstAttempts.add(position); if (isFirstAttempt && typed === expected) this.firstCorrect += 1;
     if (typed !== expected) { const wrongWord = this.wordIndex; const wrongLetter = this.letterIndex; this.errorCounts[wrongWord] += 1; this.onWordIssue?.({ word: token.word, wordIndex: wrongWord, errorCount: this.errorCounts[wrongWord], type: "error" }); this.typed[wrongWord][wrongLetter] = { value: typed, wrong: true }; this.render(); this.setFeedback("Tente outra letra."); window.setTimeout(() => { if (!this.done && this.typed[wrongWord]?.[wrongLetter]?.wrong) { this.typed[wrongWord][wrongLetter] = undefined; this.render(); } }, 280); return; }
-    this.typed[this.wordIndex][this.letterIndex] = { value: typed, wrong: false }; this.letterIndex += 1; this.render();
+    const displayChar = token.displayLetters?.[this.letterIndex] ?? token.expected[this.letterIndex];
+    this.typed[this.wordIndex][this.letterIndex] = { value: displayChar, wrong: false }; this.letterIndex += 1; this.render();
     if (this.letterIndex < token.expected.length) return;
     if (this.wordIndex < this.tokens.length - 1) { this.wordIndex += 1; this.letterIndex = 0; this.ignoreSpacesUntil = Date.now() + 350; this.render(); this.setFeedback("Boa. Próxima palavra."); this.onProgress?.(); return; }
     this.complete();
@@ -131,9 +138,8 @@ export class TypingEngine {
   renderToken(token, wordIndex) {
     const group = document.createElement("span"); group.className = "word-box"; if (wordIndex === this.wordIndex && !this.done) group.classList.add("is-active"); if (wordIndex < this.wordIndex || this.done) group.classList.add("is-complete"); if (this.selectedWords.has(wordIndex)) group.classList.add("is-selected");
     if (token.prefix) group.append(this.punctuation(token.prefix)); const slots = document.createElement("span"); slots.className = "letter-slots";
-    const visibleHints = hintLettersForLength(token.expected.length, this.hintDifficulty); wordDisplayParts(token.word).forEach((part) => { if (part.type === "punctuation") { const mark = this.punctuation(part.character); mark.classList.add("contraction-mark"); slots.append(mark); return; } const letterIndex = part.letterIndex; const letter = token.expected[letterIndex]; const slot = document.createElement("span"); const entry = this.typed[wordIndex][letterIndex]; slot.className = "letter-slot"; if (wordIndex === this.wordIndex && letterIndex === this.letterIndex && !this.done) slot.classList.add("is-caret"); if (entry?.wrong) slot.classList.add("text-rose-400", "is-wrong"); if (entry && !entry.wrong) slot.classList.add("text-emerald-400", "is-correct"); const guide = letterIndex < visibleHints && !entry && !this.revealed.has(wordIndex); slot.textContent = entry?.value ?? (this.revealed.has(wordIndex) || guide ? letter : "_"); if (guide) slot.classList.add("is-guide"); if (this.revealed.has(wordIndex) && !entry) slot.classList.add("is-revealed"); slots.append(slot); });
+    const visibleHints = hintLettersForLength(token.expected.length, this.hintDifficulty); wordDisplayParts(token.word).forEach((part) => { if (part.type === "punctuation") { const mark = this.punctuation(part.character); mark.classList.add("contraction-mark"); slots.append(mark); return; } const letterIndex = part.letterIndex; const letter = part.character ?? token.displayLetters?.[letterIndex] ?? token.expected[letterIndex]; const slot = document.createElement("span"); const entry = this.typed[wordIndex][letterIndex]; slot.className = "letter-slot"; if (wordIndex === this.wordIndex && letterIndex === this.letterIndex && !this.done) slot.classList.add("is-caret"); if (entry?.wrong) slot.classList.add("text-rose-400", "is-wrong"); if (entry && !entry.wrong) slot.classList.add("text-emerald-400", "is-correct"); const guide = letterIndex < visibleHints && !entry && !this.revealed.has(wordIndex); slot.textContent = entry?.value ?? (this.revealed.has(wordIndex) || guide ? letter : "_"); if (guide) slot.classList.add("is-guide"); if (this.revealed.has(wordIndex) && !entry) slot.classList.add("is-revealed"); slots.append(slot); });
     group.append(slots); if (token.suffix) group.append(this.punctuation(token.suffix)); group.addEventListener("click", (event) => { if (this.selectionMode) { event.preventDefault(); this.toggleExpressionWord(wordIndex); return; } if (event.shiftKey) { event.preventDefault(); this.onSaveWord?.({ word: token.word, wordIndex, errorCount: this.errorCounts[wordIndex] }); } });
-    const save = document.createElement("button"); save.type = "button"; save.className = "word-save"; save.textContent = "★"; save.title = `Salvar “${token.word}” no Meu Vocabulário C1`; save.setAttribute("aria-label", save.title); save.addEventListener("click", (event) => { event.stopPropagation(); this.onSaveWord?.({ word: token.word, wordIndex, errorCount: this.errorCounts[wordIndex] }); }); group.append(save);
     return group;
   }
   punctuation(value) { const mark = document.createElement("span"); mark.className = "punctuation"; mark.textContent = value; return mark; }
