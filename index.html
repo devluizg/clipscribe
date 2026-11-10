@@ -19,7 +19,8 @@
           <div class="brand-line"><h1 class="brand">Clip<span>Scribe</span></h1><span id="app-mode-badge" class="app-mode-badge hidden">Biblioteca pública</span></div>
         </div>
         <div class="flex flex-wrap gap-3">
-          <label class="library-select" for="clipLibrarySelect"><span>Biblioteca de Clipes</span><select id="clipLibrarySelect"><option value="">Selecione um clipe…</option></select></label>
+          <label class="library-select" for="clipLibrarySelect"><span>Vídeos</span><select id="clipLibrarySelect"><option value="">Selecione um vídeo…</option></select></label>
+          <label id="part-select-label" class="library-select hidden" for="clipPartSelect"><span>Parte</span><select id="clipPartSelect"><option value="">Parte…</option></select></label>
           <button id="new-clip-button" class="button button-accent" type="button" data-admin-only>+ Novo Clipe</button>
           <label class="button button-quiet cursor-pointer" data-admin-only>Vídeo local<input id="video-input" class="hidden" type="file" accept="video/mp4,video/webm,video/x-matroska,.mkv" /></label>
           <label class="button button-quiet cursor-pointer" data-admin-only>Legenda<input id="subtitle-input" class="hidden" type="file" accept=".srt,.vtt,text/plain" /></label>
@@ -35,7 +36,7 @@
             <div id="empty-video" class="empty-video">
               <div class="orb">▶</div>
               <p>Seu vídeo, seu ritmo.</p>
-              <small id="empty-video-help">Escolha um clipe da biblioteca para começar.</small>
+              <small id="empty-video-help">Escolha um vídeo para começar.</small>
             </div>
             <div id="video-start-overlay" class="video-start-overlay" hidden>
               <span id="video-load-pulse" class="video-load-pulse" aria-hidden="true"></span>
