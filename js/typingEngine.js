@@ -1,5 +1,6 @@
 const LETTER_OR_NUMBER = /[\p{L}\p{N}]/u;
-const normalizedLetters = (value) => (value.match(/[\p{L}\p{N}]/gu) ?? []).join("").toLocaleLowerCase();
+const normalizeChar = (value) => (value ? value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase() : "");
+const normalizedLetters = (value) => (value.match(/[\p{L}\p{N}]/gu) ?? []).map(normalizeChar).join("");
 
 export function wordDisplayParts(word) {
   let letterIndex = 0;
@@ -34,6 +35,16 @@ export class TypingEngine {
     this.input = input; this.wordBank = wordBank; this.feedback = feedback; this.onComplete = onComplete; this.onProgress = onProgress; this.onWordIssue = onWordIssue; this.onSaveWord = onSaveWord; this.onSelectionChange = onSelectionChange;
     this.hintDifficulty = "medium"; this.tokens = []; this.wordIndex = 0; this.letterIndex = 0; this.typed = []; this.errorCounts = []; this.revealed = new Set(); this.firstAttempts = new Set(); this.selectedWords = new Set(); this.selectionMode = false; this.selectionAnchor = null; this.firstCorrect = 0; this.ignoreSpacesUntil = 0; this.done = false;
     input.addEventListener("keydown", (event) => this.onKeydown(event));
+    input.addEventListener("beforeinput", (event) => this.onBeforeInput(event));
+    input.addEventListener("input", (event) => this.onInput(event));
+    input.addEventListener("compositionend", (event) => this.onCompositionEnd(event));
+    input.addEventListener("focus", () => this.updateFocusState(true));
+    input.addEventListener("blur", () => this.updateFocusState(false));
+    wordBank.addEventListener("click", (event) => {
+      if (this.selectionMode) return;
+      if (event.target.closest(".word-save")) return;
+      this.focus();
+    });
   }
   setSegment(segment) { this.tokens = tokenize(segment?.text ?? ""); this.wordIndex = 0; this.letterIndex = 0; this.typed = this.tokens.map(() => []); this.errorCounts = this.tokens.map(() => 0); this.revealed.clear(); this.firstAttempts.clear(); this.selectedWords.clear(); this.selectionMode = false; this.selectionAnchor = null; this.firstCorrect = 0; this.done = false; this.input.value = ""; this.input.disabled = !segment; this.render(); this.emitSelection(); this.setFeedback(segment ? "Ouça e digite letra por letra." : "—"); }
   setHintDifficulty(difficulty) { this.hintDifficulty = difficulty; this.render(); }
@@ -41,17 +52,71 @@ export class TypingEngine {
   toggleExpressionWord(index) { if (!this.selectionMode) return; if (this.selectionAnchor === null) { this.selectionAnchor = index; this.selectedWords = new Set([index]); } else { const start = Math.min(this.selectionAnchor, index); const end = Math.max(this.selectionAnchor, index); this.selectedWords = new Set(Array.from({ length: end - start + 1 }, (_, offset) => start + offset)); } this.render(); this.emitSelection(); }
   getSelectedExpression() { const indexes = [...this.selectedWords].sort((a, b) => a - b); return { indexes, text: indexes.map((index) => this.tokens[index]?.word).filter(Boolean).join(" ") }; }
   emitSelection() { this.onSelectionChange?.({ active: this.selectionMode, ...this.getSelectedExpression() }); }
-  focus() { if (!this.input.disabled) this.input.focus({ preventScroll: true }); }
+  focus() { if (!this.input.disabled) { try { this.input.focus({ preventScroll: true }); } catch { this.input.focus(); } } }
+  updateFocusState(isFocused) {
+    this.wordBank.classList.toggle("is-focused", isFocused);
+    const indicator = document.getElementById("mobile-focus-indicator");
+    if (indicator) {
+      indicator.textContent = isFocused ? "⌨️ Teclado ativo · digite a frase" : "⌨️ Toque para abrir o teclado";
+      indicator.classList.toggle("is-active", isFocused);
+    }
+  }
   revealCurrentWord() { if (!this.done && this.tokens[this.wordIndex]) { this.revealed.add(this.wordIndex); this.onWordIssue?.({ word: this.tokens[this.wordIndex].word, wordIndex: this.wordIndex, errorCount: this.errorCounts[this.wordIndex], type: "reveal" }); this.render(); this.setFeedback("Palavra revelada. Tente escrevê-la agora."); } }
   onKeydown(event) {
     if (this.input.disabled || this.done || this.selectionMode || event.ctrlKey || event.altKey || event.metaKey) return;
     if (event.key === "Backspace") { event.preventDefault(); this.backspace(); return; }
     if (event.key === " ") { event.preventDefault(); if (Date.now() > this.ignoreSpacesUntil) this.setFeedback("Espaço não é necessário — avance pelas letras."); return; }
-    if (event.key.length !== 1 || !LETTER_OR_NUMBER.test(event.key)) return;
-    event.preventDefault(); this.typeLetter(event.key);
+    if (event.key.length === 1 && LETTER_OR_NUMBER.test(event.key)) {
+      event.preventDefault();
+      this.typeLetter(event.key);
+    }
+  }
+  onBeforeInput(event) {
+    if (this.input.disabled || this.done || this.selectionMode) return;
+    if (event.inputType === "deleteContentBackward" || event.inputType === "deleteContentForward") {
+      event.preventDefault();
+      this.backspace();
+      return;
+    }
+    if (event.data) {
+      event.preventDefault();
+      for (const char of event.data) {
+        if (char === " ") {
+          if (Date.now() > this.ignoreSpacesUntil) this.setFeedback("Espaço não é necessário — avance pelas letras.");
+        } else {
+          const norm = normalizeChar(char);
+          if (LETTER_OR_NUMBER.test(norm)) this.typeLetter(norm);
+        }
+      }
+      this.input.value = "";
+    }
+  }
+  onInput(event) {
+    if (this.input.disabled || this.done || this.selectionMode) return;
+    const value = this.input.value;
+    if (!value) return;
+    this.input.value = "";
+    for (const char of value) {
+      if (char === " ") {
+        if (Date.now() > this.ignoreSpacesUntil) this.setFeedback("Espaço não é necessário — avance pelas letras.");
+      } else {
+        const norm = normalizeChar(char);
+        if (LETTER_OR_NUMBER.test(norm)) this.typeLetter(norm);
+      }
+    }
+  }
+  onCompositionEnd(event) {
+    if (this.input.disabled || this.done || this.selectionMode) return;
+    if (event.data) {
+      for (const char of event.data) {
+        const norm = normalizeChar(char);
+        if (LETTER_OR_NUMBER.test(norm)) this.typeLetter(norm);
+      }
+      this.input.value = "";
+    }
   }
   typeLetter(value) {
-    const token = this.tokens[this.wordIndex]; if (!token) return; const expected = token.expected[this.letterIndex]; const typed = value.toLocaleLowerCase();
+    const token = this.tokens[this.wordIndex]; if (!token) return; const expected = token.expected[this.letterIndex]; const typed = normalizeChar(value);
     const position = `${this.wordIndex}:${this.letterIndex}`; const isFirstAttempt = !this.firstAttempts.has(position);
     if (isFirstAttempt) this.firstAttempts.add(position); if (isFirstAttempt && typed === expected) this.firstCorrect += 1;
     if (typed !== expected) { const wrongWord = this.wordIndex; const wrongLetter = this.letterIndex; this.errorCounts[wrongWord] += 1; this.onWordIssue?.({ word: token.word, wordIndex: wrongWord, errorCount: this.errorCounts[wrongWord], type: "error" }); this.typed[wrongWord][wrongLetter] = { value: typed, wrong: true }; this.render(); this.setFeedback("Tente outra letra."); window.setTimeout(() => { if (!this.done && this.typed[wrongWord]?.[wrongLetter]?.wrong) { this.typed[wrongWord][wrongLetter] = undefined; this.render(); } }, 280); return; }
