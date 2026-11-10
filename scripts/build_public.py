@@ -24,6 +24,8 @@ def main() -> None:
     DIST.mkdir()
     for name in ("css", "js", "sample"):
         shutil.copytree(ROOT / name, DIST / name)
+    if (ROOT / "favicon.svg").is_file():
+        shutil.copy2(ROOT / "favicon.svg", DIST / "favicon.svg")
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     html = html.replace('name="clipscribe-mode" content="auto"', 'name="clipscribe-mode" content="public"')
     (DIST / "index.html").write_text(html, encoding="utf-8")

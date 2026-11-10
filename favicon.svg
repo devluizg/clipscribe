@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1c2319"/>
+      <stop offset="100%" stop-color="#0c0f0a"/>
+    </linearGradient>
+    <linearGradient id="lime" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ecff99"/>
+      <stop offset="100%" stop-color="#c5f848"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#bg)" stroke="#d7ff64" stroke-width="2.5" stroke-opacity="0.4"/>
+  <!-- Video Play Triangle -->
+  <path d="M23 18 L46 32 L23 46 Z" fill="url(#lime)"/>
+  <!-- Typing / Scribe Underline Cursor -->
+  <rect x="20" y="50" width="24" height="3" rx="1.5" fill="#d7ff64"/>
+</svg>
